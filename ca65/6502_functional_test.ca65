@@ -569,7 +569,8 @@ m8i     equ $ff&~intdis     ;8 bit mask - interrupt disable
 ;   designated write areas.
 ;   uses zpt word as indirect pointer, zpt+2 word as checksum
         .if ram_top > -1
-check_ram   macro
+            .macro check_ram
+            .local ccs3, ccs2, ccs5, ccs4
             cld
             lda #0
             sta zpt         ;set low byte of indirect pointer
@@ -585,9 +586,9 @@ ccs3:       adc zero_page,x
             clc
 ccs2:       inx
             bne ccs3
-            ldx #hi(abs1)   ;set high byte of indirect pointer
+            ldx #>(abs1)    ;set high byte of indirect pointer
             stx zpt+1
-            ldy #lo(abs1)   ;data after write & execute test area
+            ldy #<(abs1)    ;data after write & execute test area
 ccs5:       adc (zpt),y
             bcc ccs4
             inc zpt+3       ;carry to high byte
@@ -622,7 +623,7 @@ test_num .set test_num + 1
             .endmacro
 
         .ZEROPAGE
-		.res zero_page, 0
+        .res zero_page, 0
         .org zero_page
 
 ;break test interrupt save
@@ -831,7 +832,7 @@ ld_vect:lda vec_init,x
         pla
         and #4          ;isolate flag
         sta flag_I_on   ;or mask
-        eor #lo(~4)     ;reverse
+        eor #<(~4)      ;reverse
         sta flag_I_off  ;and mask
     .endif
 
@@ -851,9 +852,9 @@ gcs3:   adc zero_page,x
         clc
 gcs2:   inx
         bne gcs3
-        ldx #hi(abs1)   ;set high byte of indirect pointer
+        ldx #>(abs1)    ;set high byte of indirect pointer
         stx zpt+1
-        ldy #lo(abs1)   ;data after write & execute test area
+        ldy #<(abs1)    ;data after write & execute test area
 gcs5:   adc (zpt),y
         bcc gcs4
         inc ram_chksm+1 ;carry to high byte
@@ -6013,7 +6014,7 @@ break2:                 ;BRK pass 2
         jmp start       ;catastrophic error - cannot continue
 
     .if report = 1
-        include "report.i65"
+        .include "report.i65"
     .endif
 
 ;copy of data to initialize BSS segment
@@ -6103,13 +6104,13 @@ absEOa_:.byte   $ff,$f0,$f0,$0f         ;test pattern for EOR
 ;logical results
 absrlo_:.byte   0,$ff,$7f,$80
 absflo_:.byte   fz,fn,0,fn
-data_end
+data_end:
     .if (data_end - data_init) <> (data_bss_end - data_bss)
         ;force assembler error if size is different
         .error "mismatch between bss and data"
     .endif
 
-vec_init
+vec_init:
         .word   nmi_trap
         .word   res_trap
         .word   irq_trap
